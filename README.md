@@ -1,5 +1,7 @@
 # Project-Distributed-File-System
+
 Goals to achieve:
+
 1)Have to present a single system image
 
 2)Don't have to build an entire service, just a simulation of sorts. Can be on GUI or console 
