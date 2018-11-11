@@ -1,4 +1,5 @@
 import os
+import socket
 
 #set directory for file server
 root = "Root/"
@@ -42,6 +43,23 @@ def create_directory(directory_name):
 def main():
     print("Project DFS!")
     print("Write a command to execute or type help")
+
+    # create a socket object
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+
+    # get local machine name
+    host = socket.gethostname()                           
+
+    port = 9999
+
+    # connection to hostname on the port.
+    s.connect((host, port))                               
+
+    # Receive no more than 1024 bytes
+    msg = s.recv(1024)                                     
+
+    s.close()
+    print (msg.decode('ascii'))
 
     while True:    
         command = input()
