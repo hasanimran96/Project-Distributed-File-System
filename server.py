@@ -1,9 +1,9 @@
 import socket
 import threading
 
-server1 = ['localhost',5555]
-server2 = ['localhost',5555]
-server3 = ['localhost',5555]
+server1 = ["localhost", 5555]
+server2 = ["localhost", 5555]
+server3 = ["localhost", 5555]
 
 servers = []
 clients = []
@@ -72,9 +72,9 @@ def main():
     thread_listen.daemon = True
     thread_listen.start()
 
-    serversocket.connect((server1[0],server1[1]))
-    serversocket.connect((server2[0],server2[1]))
-    serversocket.connect((server3[0],server3[1]))
+    # serversocket.connect((server1[0],server1[1]))
+    # serversocket.connect((server2[0],server2[1]))
+    # serversocket.connect((server3[0],server3[1]))
 
 
 main()
