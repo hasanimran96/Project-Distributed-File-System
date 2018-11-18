@@ -41,6 +41,25 @@ def list_files(directory):
         print(file)
 
 
+def send_file(server_sock, file_name):
+    with open(file_name, "rb") as file_to_send:
+        for data in file_to_send:
+            server_sock.sendall(data)
+    print("file sent to server")
+
+
+def recieve_file(server_sock, file_name):
+    with open(file_name, "wb") as file_to_write:
+        while True:
+            data = server_sock.recv(1024)
+            # print data
+            if not data:
+                break
+            # print data
+            file_to_write.write(data)
+    print("recieved file from server")
+
+
 def create_directory(directory_name):
     if not os.path.exists(root + directory_name):
         os.mkdir(root + directory_name)

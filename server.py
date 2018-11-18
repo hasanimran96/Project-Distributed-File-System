@@ -1,6 +1,9 @@
 import socket
 import threading
 
+# set directory for file server
+root = "Root/"
+
 server1 = ["localhost", 5555]
 server2 = ["localhost", 5555]
 server3 = ["localhost", 5555]
@@ -59,6 +62,22 @@ def recieve_from_server(socket):
                 socket.send(msg.encode("utf-8"))
             else:
                 socket.send(msg)
+
+
+def send_file(client_sock, file_name):
+    with open(file_name, "rb") as file_to_send:
+        for data in file_to_send:
+            client_sock.sendall(data)
+
+
+def recieve_file(client_sock, file_name):
+    with open(file_name, "wb") as file_to_write:
+        while True:
+            data = client_sock.recv(1024)
+            if not data:
+                break
+            file_to_write.write(data)
+            file_to_write.close()
 
 
 def main():
