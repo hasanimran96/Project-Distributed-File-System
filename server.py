@@ -1,5 +1,7 @@
 import socket
 
+servers = []
+clients = []
 
 def create_socket():
     # create a socket object
@@ -21,32 +23,32 @@ def listen_server(serversocket):
 
     while True:
 
-        clientsocket, addr = serversocket.accept()
+        server_sock_accept, addr = serversocket.accept()
 
         print("Got a connection from %s" % str(addr))
 
         msg = "Thank you for connecting"
-        clientsocket.send(msg.encode("utf-8"))
-        return clientsocket
+        server_sock_accept.send(msg.encode("utf-8"))
+        servers.append(server_sock_accept)
 
 def main():
 
     # establish a connection
     serversocket = create_socket()
-    clientsocket =  listen_server(serversocket)
+    #clientsocket =  listen_server(serversocket)
     
 
-    while True:
+    # while True:
 
-        msg = clientsocket.recv(1024)
-        if msg.decode("utf-8") == "close":
-            clientsocket.close()
-        else:
-            if msg.decode("utf-8") == "download":
-                msg = "Here is your downloaded file haha"
-                clientsocket.send(msg.encode("utf-8"))
-            else:
-                clientsocket.send(msg)
+    #     msg = clientsocket.recv(1024)
+    #     if msg.decode("utf-8") == "close":
+    #         clientsocket.close()
+    #     else:
+    #         if msg.decode("utf-8") == "download":
+    #             msg = "Here is your downloaded file haha"
+    #             clientsocket.send(msg.encode("utf-8"))
+    #         else:
+    #             clientsocket.send(msg)
 
 
 main()
