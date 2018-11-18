@@ -34,7 +34,9 @@ def listen_server(serversocket):
         server_sock_accept.send(msg.encode("utf-8"))
         servers.append(server_sock_accept)
 
-        thread_recieve = threading.Thread(target=recieve_from_server, kwargs={'socket':server_sock_accept})
+        thread_recieve = threading.Thread(
+            target=recieve_from_server, kwargs={"socket": server_sock_accept}
+        )
         thread_recieve.daemon = True
         thread_recieve.start()
 
@@ -60,7 +62,9 @@ def main():
     # establish a connection
     serversocket = create_socket()
 
-    thread_listen = threading.Thread(target=listen_server, kwargs={'serversocket':serversocket})
+    thread_listen = threading.Thread(
+        target=listen_server, kwargs={"serversocket": serversocket}
+    )
     thread_listen.daemon = True
     thread_listen.start()
 
