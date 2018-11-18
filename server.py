@@ -15,12 +15,7 @@ def create_socket():
 
     return serversocket
 
-
-def main():
-
-    # establish a connection
-    serversocket = create_socket()
-
+def listen_server(serversocket):
     # queue up to 5 requests
     serversocket.listen(5)
 
@@ -32,18 +27,26 @@ def main():
 
         msg = "Thank you for connecting"
         clientsocket.send(msg.encode("utf-8"))
+        return clientsocket
 
-        while True:
+def main():
 
-            msg = clientsocket.recv(1024)
-            if msg.decode("utf-8") == "close":
-                clientsocket.close()
+    # establish a connection
+    serversocket = create_socket()
+    clientsocket =  listen_server(serversocket)
+    
+
+    while True:
+
+        msg = clientsocket.recv(1024)
+        if msg.decode("utf-8") == "close":
+            clientsocket.close()
+        else:
+            if msg.decode("utf-8") == "download":
+                msg = "Here is your downloaded file haha"
+                clientsocket.send(msg.encode("utf-8"))
             else:
-                if msg.decode("utf-8") == "download":
-                    msg = "Here is your downloaded file haha"
-                    clientsocket.send(msg.encode("utf-8"))
-                else:
-                    clientsocket.send(msg)
+                clientsocket.send(msg)
 
 
 main()
