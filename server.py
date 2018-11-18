@@ -3,6 +3,7 @@ import socket
 servers = []
 clients = []
 
+
 def create_socket():
     # create a socket object
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -16,6 +17,7 @@ def create_socket():
     serversocket.bind((host, port))
 
     return serversocket
+
 
 def listen_server(serversocket):
     # queue up to 5 requests
@@ -31,24 +33,28 @@ def listen_server(serversocket):
         server_sock_accept.send(msg.encode("utf-8"))
         servers.append(server_sock_accept)
 
+
+def recieve_from_server(socket):
+    while True:
+
+        msg = socket.recv(1024)
+        if len(msg) == 0:
+            socket.close()
+        elif msg.decode("utf-8") == "close":
+            socket.close()
+        else:
+            if msg.decode("utf-8") == "download":
+                msg = "Here is your downloaded file haha"
+                socket.send(msg.encode("utf-8"))
+            else:
+                socket.send(msg)
+
+
 def main():
 
     # establish a connection
     serversocket = create_socket()
-    #clientsocket =  listen_server(serversocket)
-    
-
-    # while True:
-
-    #     msg = clientsocket.recv(1024)
-    #     if msg.decode("utf-8") == "close":
-    #         clientsocket.close()
-    #     else:
-    #         if msg.decode("utf-8") == "download":
-    #             msg = "Here is your downloaded file haha"
-    #             clientsocket.send(msg.encode("utf-8"))
-    #         else:
-    #             clientsocket.send(msg)
+    # clientsocket =  listen_server(serversocket)
 
 
 main()
