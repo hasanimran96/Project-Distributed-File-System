@@ -1,5 +1,6 @@
 import socket
 import threading
+import os
 
 # set directory for file server
 root = "Root/"
@@ -53,15 +54,22 @@ def recieve_from_server(socket):
 
         msg = socket.recv(1024)
         if len(msg) == 0:
-            socket.close()
-        elif msg.decode("utf-8") == "close":
-            socket.close()
+            socket.send("error")
+        elif msg == "list local":
+            temp_list = list_local("Root")
+            socket.send(str(temp_list))
         else:
-            if msg.decode("utf-8") == "download":
-                msg = "Here is your downloaded file haha"
-                socket.send(msg.encode("utf-8"))
-            else:
-                socket.send(msg)
+            socket.send("error")
+
+
+def list_local(directory):
+    temp_list = os.listdir(directory)
+    return temp_list
+
+
+def list_global():
+    for server in servers:
+        server.send("list local")
 
 
 def send_file(client_sock, file_name):

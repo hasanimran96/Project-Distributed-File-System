@@ -35,10 +35,15 @@ def append_to_file(file_name, message):
     fd.write(message)
 
 
-def list_files(directory):
-    temp_list = os.listdir(directory)
-    for file in temp_list:
-        print(file)
+def list_files(server_sock, directory):
+    while True:
+        data = server_sock.recv(1024)
+        if not data:
+            break
+        temp_list = data
+    for item in temp_list:
+        print(item)
+
 
 
 def send_file(server_sock, file_name):
@@ -72,10 +77,15 @@ def make_socket():
     # create a socket object
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # get local machine name
-    host = socket.gethostname()
+    # get server ip
+    print("Enter server IP")
+    msg = input()
+    host = msg
 
-    port = 9999
+    # get server port
+    print("Enter server port")
+    msg = input()
+    port = msg
 
     # connection to hostname on the port.
     s.connect((host, port))
