@@ -51,13 +51,21 @@ def listen_server(serversocket):
 
 def recieve_from_server(socket):
     while True:
-
         msg = socket.recv(1024)
-        if len(msg) == 0:
-            socket.send("error")
-        elif msg == "list local":
+
+
+
+def recieve_from_client(socket):
+    while True:
+        command = socket.recv(1024)
+        command_split = command.split()
+        if len(command_split) < 1:
+            print("Please write a command or type help")
+        elif command_split[0] == "list":
             temp_list = list_local("Root")
             socket.send(str(temp_list))
+        elif command == "get":
+            send_file(socket, command_split[1])
         else:
             socket.send("error")
 

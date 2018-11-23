@@ -85,7 +85,7 @@ def make_socket():
     # get server port
     print("Enter server port")
     msg = input()
-    port = msg
+    port = int(msg)
 
     # connection to hostname on the port.
     s.connect((host, port))
