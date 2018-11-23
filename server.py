@@ -16,16 +16,19 @@ clients = []
 def create_socket():
     # create a socket object
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # get local machine name
     host = socket.gethostname()
 
-    port = 9999
+    server_port = 9999
+    client_port = 9998
 
     # bind to the port
-    serversocket.bind((host, port))
+    serversocket.bind((host, server_port))
+    clientsocket.bind((host, client_port))
 
-    return serversocket
+    return serversocket, clientsocket
 
 
 def listen_server(serversocket):
@@ -49,10 +52,36 @@ def listen_server(serversocket):
         thread_recieve.start()
 
 
+def listen_client(clientsocket):
+    # queue up to 5 requests
+    clientsocket.listen(5)
+
+    while True:
+
+        client_sock_accept, addr = clientsocket.accept()
+
+        print("Got a connection from %s" % str(addr))
+
+        msg = "Thank you for connecting"
+        client_sock_accept.send(msg.encode("utf-8"))
+        clients.append(client_sock_accept)
+
+        thread_recieve = threading.Thread(
+            target=recieve_from_client, kwargs={"socket": client_sock_accept}
+        )
+        thread_recieve.daemon = True
+        thread_recieve.start()
+
+
 def recieve_from_server(socket):
     while True:
         msg = socket.recv(1024)
-
+        if len(msg) < 1:
+            socket.close()
+        elif msg == "list":
+            temp_list = list_local("Root")
+            msg = "list | " + temp_list
+            socket.send()
 
 
 def recieve_from_client(socket):
@@ -60,10 +89,9 @@ def recieve_from_client(socket):
         command = socket.recv(1024)
         command_split = command.split()
         if len(command_split) < 1:
-            print("Please write a command or type help")
+            socket.close()
         elif command_split[0] == "list":
-            temp_list = list_local("Root")
-            socket.send(str(temp_list))
+            list_global(socket)
         elif command == "get":
             send_file(socket, command_split[1])
         else:
@@ -75,7 +103,7 @@ def list_local(directory):
     return temp_list
 
 
-def list_global():
+def list_global(socket):
     for server in servers:
         server.send("list local")
 
@@ -99,17 +127,23 @@ def recieve_file(client_sock, file_name):
 def main():
 
     # establish a connection
-    serversocket = create_socket()
+    server_socket, client_socket = create_socket()
 
-    thread_listen = threading.Thread(
-        target=listen_server, kwargs={"serversocket": serversocket}
+    thread_listen_server = threading.Thread(
+        target=listen_server, kwargs={"serversocket": server_socket}
     )
-    thread_listen.daemon = True
-    thread_listen.start()
+    thread_listen_server.daemon = True
+    thread_listen_server.start()
 
-    # serversocket.connect((server1[0],server1[1]))
-    # serversocket.connect((server2[0],server2[1]))
-    # serversocket.connect((server3[0],server3[1]))
+    server_socket.connect((server1[0], server1[1]))
+    server_socket.connect((server2[0], server2[1]))
+    server_socket.connect((server3[0], server3[1]))
+
+    thread_listen_client = threading.Thread(
+        target=listen_client, kwargs={"clientsocket": client_socket}
+    )
+    thread_listen_client.daemon = True
+    thread_listen_client.start()
 
 
 main()

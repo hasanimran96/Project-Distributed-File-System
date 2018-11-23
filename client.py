@@ -45,7 +45,6 @@ def list_files(server_sock, directory):
         print(item)
 
 
-
 def send_file(server_sock, file_name):
     with open(file_name, "rb") as file_to_send:
         for data in file_to_send:
@@ -104,49 +103,41 @@ def main():
     print(msg.decode("utf-8"))
 
     while True:
-
-        print("Server says enter your command")
-        prompt = input()
-
-        if prompt == "close":
-            s.send(prompt.encode("utf-8"))
-            s.close()
+        command = input()
+        command_split = command.split()
+        if len(command_split) < 1:
+            print("Please write a command or type help")
+        elif command_split[0] == "open":
+            open_file(command_split[1])
+        elif command_split[0] == "read":
+            s.send(command)
+            recieve_file(s, command_split[1])
+            message = read_from_file(command_split[1])
+            print(message)
+        elif command_split[0] == "create":
+            create_file(command_split[1])
+        elif command_split[0] == "write":
+            str_temp = " ".join(str(x) for x in command_split[2:])
+            write_to_file(command_split[1], str_temp)
+        elif command_split[0] == "append":
+            str_temp = " ".join(str(x) for x in command_split[2:])
+            append_to_file(command_split[1], str_temp)
+        elif command_split[0] == "list":
+            s.send(command)
+            while True:
+                data = s.recv(1024)
+                # print data
+                if not data:
+                    break
+                # print data
+                print(data)
+        elif command_split[0] == "mkdir":
+            create_directory(command_split[1])
+        # elif(command_split[0]=="close"):
+        elif command_split[0] == "exit":
+            break
         else:
-            s.send(prompt.encode("utf-8"))
-
-        msg = s.recv(1024)
-        print(msg.decode("utf-8"))
-
-    # while True:
-    #     command = input()
-    #     command_split = command.split()
-    #     if len(command_split) < 1:
-    #         print("Please write a command or type help")
-    #     elif command_split[0] == "open":
-    #         open_file(command_split[1])
-    #     elif command_split[0] == "read":
-    #         message = read_from_file(command_split[1])
-    #         print(message)
-    #     elif command_split[0] == "create":
-    #         create_file(command_split[1])
-    #     elif command_split[0] == "write":
-    #         str_temp = " ".join(str(x) for x in command_split[2:])
-    #         write_to_file(command_split[1], str_temp)
-    #     elif command_split[0] == "append":
-    #         str_temp = " ".join(str(x) for x in command_split[2:])
-    #         append_to_file(command_split[1], str_temp)
-    #     elif command_split[0] == "list":
-    #         if len(command_split) > 2:
-    #             list_files(command_split[1])
-    #         else:
-    #             list_files("Root")
-    #     elif command_split[0] == "mkdir":
-    #         create_directory(command_split[1])
-    #     # elif(command_split[0]=="close"):
-    #     elif command_split[0] == "exit":
-    #         break
-    #     else:
-    #         print("Invalid intruction. Type help")
+            print("Invalid intruction. Type help")
 
 
 main()
