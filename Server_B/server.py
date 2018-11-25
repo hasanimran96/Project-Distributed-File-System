@@ -1,13 +1,10 @@
 import socket
 import threading
 import os
+import config
 
 # set directory for file server
 root = "Root/"
-
-server1 = ["localhost", 5555]
-server2 = ["localhost", 5555]
-server3 = ["localhost", 5555]
 
 servers = []
 clients = []
@@ -21,8 +18,8 @@ def create_socket():
     # get local machine name
     host = socket.gethostname()
 
-    server_port = 9999
-    client_port = 9998
+    server_port = config.SERVER_B_CONFIG['port']
+    client_port = config.SERVER_B_CONFIG['client_port']
 
     # bind to the port
     serversocket.bind((host, server_port))
@@ -92,7 +89,7 @@ def recieve_from_client(socket):
             socket.close()
         elif command_split[0] == "list":
             list_global(socket)
-        elif command == "get":
+        elif command_split[0] == "read" or command_split[0] == "write":
             send_file(socket, command_split[1])
         else:
             socket.send("error")
@@ -135,9 +132,23 @@ def main():
     thread_listen_server.daemon = True
     thread_listen_server.start()
 
-    server_socket.connect((server1[0], server1[1]))
-    server_socket.connect((server2[0], server2[1]))
-    server_socket.connect((server3[0], server3[1]))
+    # # SERVER A
+    # server_socket.connect(
+    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    # server_socket.connect(
+    #     (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+
+    # SERVER B
+    server_socket.connect(
+        (config.SERVER_A_CONFIG['host'], config.SERVER_A_CONFIG['port']))
+    server_socket.connect(
+        (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+
+    # # SERVER C
+    # server_socket.connect(
+    #     (config.SERVER_A_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    # server_socket.connect(
+    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
 
     thread_listen_client = threading.Thread(
         target=listen_client, kwargs={"clientsocket": client_socket}

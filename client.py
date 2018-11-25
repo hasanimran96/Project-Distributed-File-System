@@ -117,8 +117,12 @@ def main():
         elif command_split[0] == "create":
             create_file(command_split[1])
         elif command_split[0] == "write":
+            s.send(command)
+            recieve_file(s, command_split[1])
             str_temp = " ".join(str(x) for x in command_split[2:])
             write_to_file(command_split[1], str_temp)
+            # add a method to let server know that you are know sending a file
+            send_file(s, command_split[1])
         elif command_split[0] == "append":
             str_temp = " ".join(str(x) for x in command_split[2:])
             append_to_file(command_split[1], str_temp)
