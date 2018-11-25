@@ -2,6 +2,7 @@ import socket
 import threading
 import os
 import config
+import time
 
 # set directory for file server
 root = "Root/"
@@ -132,29 +133,33 @@ def main():
     thread_listen_server.daemon = True
     thread_listen_server.start()
 
-    # SERVER A
-    server_socket.connect(
-        (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    server_socket.connect(
-        (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    # # SERVER A
+    # server_socket.connect(
+    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    # server_socket.connect(
+    #     (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
 
-    # SERVER B
-    server_socket.connect(
-        (config.SERVER_A_CONFIG['host'], config.SERVER_A_CONFIG['port']))
-    server_socket.connect(
-        (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    # # SERVER B
+    # server_socket.connect(
+    #     (config.SERVER_A_CONFIG['host'], config.SERVER_A_CONFIG['port']))
+    # server_socket.connect(
+    #     (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
 
-    # SERVER C
-    server_socket.connect(
-        (config.SERVER_A_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    server_socket.connect(
-        (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    # # SERVER C
+    # server_socket.connect(
+    #     (config.SERVER_A_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    # server_socket.connect(
+    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
 
     thread_listen_client = threading.Thread(
         target=listen_client, kwargs={"clientsocket": client_socket}
     )
     thread_listen_client.daemon = True
     thread_listen_client.start()
+
+    while True:
+        time.sleep(5)
+        print("server is awake")
 
 
 main()
