@@ -3,28 +3,27 @@ import threading
 import os
 import config
 import time
+import sys
 
 # set directory for file server
 root = "Root/"
-#set port for server
+# set port for server
 port = 5555
-#set port for server client socket
+# set port for server client socket
 c_port = 9999
-servers_to_connect = [['127.0.0.1',5556],['127.0.0.1',5557]]
+servers_to_connect = [['127.0.0.1', 5556], ['127.0.0.1', 5557]]
 
-#locking mechanism
+# locking mechanism
 lock = threading.Lock()
 
-#list of servers connected
+# list of servers connected
 servers_connected = []
 
-#list of clients connected
+# list of clients connected
 clients_connected = []
 
 
 def listen_server(serversocket):
-    # queue up to 5 requests
-    serversocket.listen(5)
 
     while True:
 
@@ -36,7 +35,7 @@ def listen_server(serversocket):
         bool = is_in_servers_to_connect(addr, servers_connected)
         lock.release()
         if bool:
-                server_sock_accept.close()
+            server_sock_accept.close()
         else:
             print('Listening Connection Successful', addr)
             sock_temp = [addr[0], addr[1], server_sock_accept]
@@ -82,6 +81,8 @@ def recieve_from_server(socket):
             temp_list = list_local("Root")
             msg = "list | " + temp_list
             socket.send()
+        else:
+            print(msg)
 
 
 def recieve_from_client(socket):
@@ -123,6 +124,7 @@ def recieve_file(client_sock, file_name):
             file_to_write.write(data)
             file_to_write.close()
 
+
 def is_in_servers_to_connect(port, list):
     size = len([item for item in list if port[1] == item[1]])
     if size > 0:
@@ -141,7 +143,9 @@ def main():
     server_port = port
     # bind to the port
     serversocket.bind((host, server_port))
-    print("Socket port: %s" % (port))
+    print("bind socket port: %s" % (port))
+    # queue up to 5 requests
+    serversocket.listen(5)
 
     try:
         thread_listen_server = threading.Thread(
@@ -161,7 +165,7 @@ def main():
             continue
         else:
             print('connecting to:', sock)
-            server_conn = socket.socket()
+            server_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_conn.settimeout(3)
             try:
                 ret = server_conn.connect_ex((sock[0], sock[1]))
@@ -176,19 +180,19 @@ def main():
             except socket.error:
                 print("connect failed on " + sock[0], sock[1])
 
+    # clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # clientsocket.bind((host, c_port))
 
-    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    clientsocket.bind((host, c_port))
-
-    thread_listen_client = threading.Thread(
-        target=listen_client, kwargs={"clientsocket": clientsocket}
-    )
-    thread_listen_client.daemon = True
-    thread_listen_client.start()
+    # thread_listen_client = threading.Thread(
+    #     target=listen_client, kwargs={"clientsocket": clientsocket}
+    # )
+    # thread_listen_client.daemon = True
+    # thread_listen_client.start()
 
     while True:
-        time.sleep(5)
-        print("server is awake")
+        command = input()
+        if(command == 'close' or command == 'exit'):
+            sys.exit()
 
 
 main()

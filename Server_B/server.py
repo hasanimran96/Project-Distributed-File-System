@@ -2,45 +2,47 @@ import socket
 import threading
 import os
 import config
+import time
+import sys
 
 # set directory for file server
 root = "Root/"
+# set port for server
+port = 5556
+# set port for server client socket
+c_port = 9999
+servers_to_connect = [['127.0.0.1', 5555], ['127.0.0.1', 5557]]
 
-servers = []
-clients = []
+# locking mechanism
+lock = threading.Lock()
 
+# list of servers connected
+servers_connected = []
 
-def create_socket():
-    # create a socket object
-    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # get local machine name
-    host = socket.gethostname()
-
-    server_port = config.SERVER_B_CONFIG['port']
-    client_port = config.SERVER_B_CONFIG['client_port']
-
-    # bind to the port
-    serversocket.bind((host, server_port))
-    clientsocket.bind((host, client_port))
-
-    return serversocket, clientsocket
+# list of clients connected
+clients_connected = []
 
 
 def listen_server(serversocket):
-    # queue up to 5 requests
-    serversocket.listen(5)
 
     while True:
 
         server_sock_accept, addr = serversocket.accept()
-
         print("Got a connection from %s" % str(addr))
-
         msg = "Thank you for connecting"
         server_sock_accept.send(msg.encode("utf-8"))
-        servers.append(server_sock_accept)
+        lock.acquire()
+        bool = is_in_servers_to_connect(addr, servers_connected)
+        lock.release()
+        if bool:
+            server_sock_accept.close()
+        else:
+            print('Listening Connection Successful', addr)
+            sock_temp = [addr[0], addr[1], server_sock_accept]
+            lock.acquire(True)
+            servers_connected.append(sock_temp)
+            print(servers_connected)
+            lock.release()
 
         thread_recieve = threading.Thread(
             target=recieve_from_server, kwargs={"socket": server_sock_accept}
@@ -61,7 +63,7 @@ def listen_client(clientsocket):
 
         msg = "Thank you for connecting"
         client_sock_accept.send(msg.encode("utf-8"))
-        clients.append(client_sock_accept)
+        clients_connected.append(client_sock_accept)
 
         thread_recieve = threading.Thread(
             target=recieve_from_client, kwargs={"socket": client_sock_accept}
@@ -79,6 +81,8 @@ def recieve_from_server(socket):
             temp_list = list_local("Root")
             msg = "list | " + temp_list
             socket.send()
+        else:
+            print(msg)
 
 
 def recieve_from_client(socket):
@@ -101,7 +105,7 @@ def list_local(directory):
 
 
 def list_global(socket):
-    for server in servers:
+    for server in servers_connected:
         server.send("list local")
 
 
@@ -121,40 +125,74 @@ def recieve_file(client_sock, file_name):
             file_to_write.close()
 
 
+def is_in_servers_to_connect(port, list):
+    size = len([item for item in list if port[1] == item[1]])
+    if size > 0:
+        return True
+    else:
+        return False
+
+
 def main():
 
-    # establish a connection
-    server_socket, client_socket = create_socket()
+    # create a socket object
+    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # get local machine name
+    host = socket.gethostname()
+    server_port = port
+    # bind to the port
+    serversocket.bind((host, server_port))
+    print("bind socket port: %s" % (port))
+    # queue up to 5 requests
+    serversocket.listen(5)
 
-    thread_listen_server = threading.Thread(
-        target=listen_server, kwargs={"serversocket": server_socket}
-    )
-    thread_listen_server.daemon = True
-    thread_listen_server.start()
+    try:
+        thread_listen_server = threading.Thread(
+            target=listen_server, kwargs={"serversocket": serversocket}
+        )
+        thread_listen_server.daemon = True
+        thread_listen_server.start()
+    except:
+        print("Error in thread: listen_server")
 
-    # # SERVER A
-    # server_socket.connect(
-    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    # server_socket.connect(
-    #     (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    # Connection Requests
+    for sock in servers_to_connect:
+        lock.acquire(True)
+        bool = is_in_servers_to_connect(sock, servers_connected)
+        lock.release()
+        if bool:
+            continue
+        else:
+            print('connecting to:', sock)
+            server_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_conn.settimeout(3)
+            try:
+                ret = server_conn.connect_ex((sock[0], sock[1]))
+                server_conn.settimeout(None)
+                if ret == 0:
+                    sock_temp = [sock[0], sock[1], server_conn]
+                    lock.acquire(True)
+                    servers_connected.append(sock_temp)
+                    print('Connect successful')
+                    print(servers_connected)
+                    lock.release()
+            except socket.error:
+                print("connect failed on " + sock[0], sock[1])
 
-    # SERVER B
-    server_socket.connect(
-        (config.SERVER_A_CONFIG['host'], config.SERVER_A_CONFIG['port']))
-    server_socket.connect(
-        (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    # clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # clientsocket.bind((host, c_port))
 
-    # # SERVER C
-    # server_socket.connect(
-    #     (config.SERVER_A_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    # server_socket.connect(
-    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    # thread_listen_client = threading.Thread(
+    #     target=listen_client, kwargs={"clientsocket": clientsocket}
+    # )
+    # thread_listen_client.daemon = True
+    # thread_listen_client.start()
 
-    thread_listen_client = threading.Thread(
-        target=listen_client, kwargs={"clientsocket": client_socket}
-    )
-    thread_listen_client.daemon = True
-    thread_listen_client.start()
+    while True:
+        command = input()
+        if(command == 'close' or command == 'exit'):
+            sys.exit()
 
 
 main()
