@@ -6,9 +6,20 @@ import time
 
 # set directory for file server
 root = "Root/"
+#set port for server
+port = 5555
+#set port for server client socket
+c_port = 9999
+servers_to_connect = [['127.0.0.1',5556],['127.0.0.1',5557]]
 
-servers = []
-clients = []
+#locking mechanism
+lock = threading.Lock()
+
+#list of servers connected
+servers_connected = []
+
+#list of clients connected
+clients_connected = []
 
 
 def listen_server(serversocket):
@@ -18,12 +29,21 @@ def listen_server(serversocket):
     while True:
 
         server_sock_accept, addr = serversocket.accept()
-
         print("Got a connection from %s" % str(addr))
-
         msg = "Thank you for connecting"
         server_sock_accept.send(msg.encode("utf-8"))
-        servers.append(server_sock_accept)
+        lock.acquire()
+        bool = is_in_servers_to_connect(addr, servers_connected)
+        lock.release()
+        if bool:
+                server_sock_accept.close()
+        else:
+            print('Listening Connection Successful', addr)
+            sock_temp = [addr[0], addr[1], server_sock_accept]
+            lock.acquire(True)
+            servers_connected.append(sock_temp)
+            print(servers_connected)
+            lock.release()
 
         thread_recieve = threading.Thread(
             target=recieve_from_server, kwargs={"socket": server_sock_accept}
@@ -44,7 +64,7 @@ def listen_client(clientsocket):
 
         msg = "Thank you for connecting"
         client_sock_accept.send(msg.encode("utf-8"))
-        clients.append(client_sock_accept)
+        clients_connected.append(client_sock_accept)
 
         thread_recieve = threading.Thread(
             target=recieve_from_client, kwargs={"socket": client_sock_accept}
@@ -84,7 +104,7 @@ def list_local(directory):
 
 
 def list_global(socket):
-    for server in servers:
+    for server in servers_connected:
         server.send("list local")
 
 
@@ -103,74 +123,62 @@ def recieve_file(client_sock, file_name):
             file_to_write.write(data)
             file_to_write.close()
 
+def is_in_servers_to_connect(port, list):
+    size = len([item for item in list if port[1] == item[1]])
+    if size > 0:
+        return True
+    else:
+        return False
+
 
 def main():
 
     # create a socket object
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # get local machine name
     host = socket.gethostname()
-
-    server_port = config.SERVER_A_CONFIG['port']
-    client_port = config.SERVER_A_CONFIG['client_port']
-
+    server_port = port
     # bind to the port
     serversocket.bind((host, server_port))
-    clientsocket.bind((host, client_port))
+    print("Socket port: %s" % (port))
 
-    thread_listen_server = threading.Thread(
-        target=listen_server, kwargs={"serversocket": serversocket}
-    )
-    thread_listen_server.daemon = True
-    thread_listen_server.start()
-
-    # SERVER A
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        sock.connect(
-            (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-        servers.append(sock)
+        thread_listen_server = threading.Thread(
+            target=listen_server, kwargs={"serversocket": serversocket}
+        )
+        thread_listen_server.daemon = True
+        thread_listen_server.start()
     except:
-        print("could not connect to server B")
+        print("Error in thread: listen_server")
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.connect(
-            (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
-    except:
-        print("could not connect to server C")
+    # Connection Requests
+    for sock in servers_to_connect:
+        lock.acquire(True)
+        bool = is_in_servers_to_connect(sock, servers_connected)
+        lock.release()
+        if bool:
+            continue
+        else:
+            print('connecting to:', sock)
+            server_conn = socket.socket()
+            server_conn.settimeout(3)
+            try:
+                ret = server_conn.connect_ex((sock[0], sock[1]))
+                server_conn.settimeout(None)
+                if ret == 0:
+                    sock_temp = [sock[0], sock[1], server_conn]
+                    lock.acquire(True)
+                    servers_connected.append(sock_temp)
+                    print('Connect successful')
+                    print(servers_connected)
+                    lock.release()
+            except socket.error:
+                print("connect failed on " + sock[0], sock[1])
 
-    # SERVER B
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.connect(
-            (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    except:
-        print("could not connect to server B")
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.connect(
-            (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
-    except:
-        print("could not connect to server C")
-
-    # SERVER C
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.connect(
-            (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    except:
-        print("could not connect to server B")
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.connect(
-            (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
-    except:
-        print("could not connect to server C")
+    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    clientsocket.bind((host, c_port))
 
     thread_listen_client = threading.Thread(
         target=listen_client, kwargs={"clientsocket": clientsocket}
