@@ -1,7 +1,6 @@
 import socket
 import threading
 import os
-import config
 import time
 import sys
 
@@ -140,9 +139,8 @@ def main():
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # get local machine name
     host = socket.gethostname()
-    server_port = port
     # bind to the port
-    serversocket.bind((host, server_port))
+    serversocket.bind((host, port))
     print("bind socket port: %s" % (port))
     # queue up to 5 requests
     serversocket.listen(5)
@@ -166,11 +164,16 @@ def main():
         else:
             print('connecting to:', sock)
             server_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            print('server_conn created')
             server_conn.settimeout(3)
+            print('set timeout')
             try:
+                print('start connect')
                 ret = server_conn.connect_ex((sock[0], sock[1]))
+                print('connect executed')
                 server_conn.settimeout(None)
                 if ret == 0:
+                    print('connect successful')
                     sock_temp = [sock[0], sock[1], server_conn]
                     lock.acquire(True)
                     servers_connected.append(sock_temp)
