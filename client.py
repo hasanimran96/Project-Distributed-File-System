@@ -72,7 +72,10 @@ def create_directory(directory_name):
         print("Directory ", directory_name, " already exists")
 
 
-def make_socket():
+def main():
+    print("Project DFS!")
+    print("Write a command to execute or type help")
+
     # create a socket object
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -89,16 +92,7 @@ def make_socket():
     # connection to hostname on the port.
     s.connect((host, port))
 
-    return s
-
-
-def main():
-    print("Project DFS!")
-    print("Write a command to execute or type help")
-
     # Receive no more than 1024 bytes
-    s = make_socket()
-
     msg = s.recv(1024)
     print(msg.decode("utf-8"))
 

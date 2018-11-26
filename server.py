@@ -11,24 +11,6 @@ servers = []
 clients = []
 
 
-def create_socket():
-    # create a socket object
-    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # get local machine name
-    host = socket.gethostname()
-
-    server_port = config.SERVER_A_CONFIG['port']
-    client_port = config.SERVER_A_CONFIG['client_port']
-
-    # bind to the port
-    serversocket.bind((host, server_port))
-    clientsocket.bind((host, client_port))
-
-    return serversocket, clientsocket
-
-
 def listen_server(serversocket):
     # queue up to 5 requests
     serversocket.listen(5)
@@ -124,35 +106,74 @@ def recieve_file(client_sock, file_name):
 
 def main():
 
-    # establish a connection
-    server_socket, client_socket = create_socket()
+    # create a socket object
+    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # get local machine name
+    host = socket.gethostname()
+
+    server_port = config.SERVER_A_CONFIG['port']
+    client_port = config.SERVER_A_CONFIG['client_port']
+
+    # bind to the port
+    serversocket.bind((host, server_port))
+    clientsocket.bind((host, client_port))
 
     thread_listen_server = threading.Thread(
-        target=listen_server, kwargs={"serversocket": server_socket}
+        target=listen_server, kwargs={"serversocket": serversocket}
     )
     thread_listen_server.daemon = True
     thread_listen_server.start()
 
-    # # SERVER A
-    # server_socket.connect(
-    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    # server_socket.connect(
-    #     (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    # SERVER A
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.connect(
+            (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+        servers.append(sock)
+    except:
+        print("could not connect to server B")
 
-    # # SERVER B
-    # server_socket.connect(
-    #     (config.SERVER_A_CONFIG['host'], config.SERVER_A_CONFIG['port']))
-    # server_socket.connect(
-    #     (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.connect(
+            (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    except:
+        print("could not connect to server C")
 
-    # # SERVER C
-    # server_socket.connect(
-    #     (config.SERVER_A_CONFIG['host'], config.SERVER_B_CONFIG['port']))
-    # server_socket.connect(
-    #     (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    # SERVER B
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.connect(
+            (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    except:
+        print("could not connect to server B")
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.connect(
+            (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    except:
+        print("could not connect to server C")
+
+    # SERVER C
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.connect(
+            (config.SERVER_B_CONFIG['host'], config.SERVER_B_CONFIG['port']))
+    except:
+        print("could not connect to server B")
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.connect(
+            (config.SERVER_C_CONFIG['host'], config.SERVER_C_CONFIG['port']))
+    except:
+        print("could not connect to server C")
 
     thread_listen_client = threading.Thread(
-        target=listen_client, kwargs={"clientsocket": client_socket}
+        target=listen_client, kwargs={"clientsocket": clientsocket}
     )
     thread_listen_client.daemon = True
     thread_listen_client.start()
