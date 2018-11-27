@@ -52,7 +52,7 @@ def listen_server(serversocket):
             lock.acquire(True)
             global_file_list.append(data[:-3])
             lock.release()
-            list_str = "/n".join(local_file_list)
+            list_str = " ".join(local_file_list)
             msg = str(addr[1]) + " " + list_str + " " + "###"
             lock.acquire(True)
             server_sock_accept.sendall(msg.encode())
@@ -187,7 +187,7 @@ def main():
                     print('Connect successful')
                     lock.release()
                     print('sending list')
-                    list_str = "/n".join(local_file_list)
+                    list_str = " ".join(local_file_list)
                     msg = str(sock[1]) + " " + list_str + " " + "###"
                     lock.acquire(True)
                     server_conn.sendall(msg.encode())
@@ -217,6 +217,11 @@ def main():
         command = input()
         if(command == 'close' or command == 'exit'):
             sys.exit()
+        if(command == 'listg'):
+            print(global_file_list)
+        if(command == 'listl'):
+            list_local('Root')
+            print(local_file_list)
 
 
 main()
