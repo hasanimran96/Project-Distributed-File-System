@@ -23,13 +23,12 @@ clients_connected = []
 
 
 def listen_server(serversocket):
-
+    print('listening server thread')
+    # queue up to 5 requests
+    serversocket.listen(5)
     while True:
-
         server_sock_accept, addr = serversocket.accept()
         print("Got a connection from %s" % str(addr))
-        msg = "Thank you for connecting"
-        server_sock_accept.send(msg.encode("utf-8"))
         lock.acquire()
         bool = is_in_servers_to_connect(addr, servers_connected)
         lock.release()
@@ -135,19 +134,17 @@ def is_in_servers_to_connect(port, list):
 def main():
 
     # create a socket object
-    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # get local machine name
     host = socket.gethostname()
     # bind to the port
-    serversocket.bind((host, port))
+    server_socket.bind((host, port))
     print("bind socket port: %s" % (port))
-    # queue up to 5 requests
-    serversocket.listen(5)
 
     try:
         thread_listen_server = threading.Thread(
-            target=listen_server, kwargs={"serversocket": serversocket}
+            target=listen_server, kwargs={"serversocket": server_socket}
         )
         thread_listen_server.daemon = True
         thread_listen_server.start()
@@ -191,6 +188,8 @@ def main():
     # )
     # thread_listen_client.daemon = True
     # thread_listen_client.start()
+
+    print(servers_connected)
 
     while True:
         command = input()
