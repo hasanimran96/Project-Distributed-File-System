@@ -21,8 +21,14 @@ servers_connected = []
 # list of clients connected
 clients_connected = []
 
+# list local
+local_file_list = []
+# list global
+global_file_list = []
+
 
 def listen_server(serversocket):
+    global servers_connected, global_file_list
     print('listening server thread')
     # queue up to 5 requests
     serversocket.listen(5)
@@ -39,7 +45,17 @@ def listen_server(serversocket):
             sock_temp = [addr[0], addr[1], server_sock_accept]
             lock.acquire(True)
             servers_connected.append(sock_temp)
-            print(servers_connected)
+            lock.release()
+            data = server_sock_accept.recv(1024).decode()
+            while(data[-3:] != "###"):
+                data += server_sock_accept.recv(1024).decode()
+            lock.acquire(True)
+            global_file_list.append(data[:-3])
+            lock.release()
+            list_str = "/n".join(local_file_list)
+            msg = str(addr[1]) + " " + list_str + " " + "###"
+            lock.acquire(True)
+            server_sock_accept.sendall(msg.encode())
             lock.release()
 
         thread_recieve = threading.Thread(
@@ -71,12 +87,13 @@ def listen_client(clientsocket):
 
 
 def recieve_from_server(socket):
+    global local_file_list
     while True:
         msg = socket.recv(1024)
         if len(msg) < 1:
             socket.close()
         elif msg == "list":
-            temp_list = list_local("Root")
+            temp_list = local_file_list
             msg = "list | " + temp_list
             socket.send()
         else:
@@ -84,13 +101,14 @@ def recieve_from_server(socket):
 
 
 def recieve_from_client(socket):
+    global global_file_list
     while True:
         command = socket.recv(1024)
         command_split = command.split()
         if len(command_split) < 1:
             socket.close()
         elif command_split[0] == "list":
-            list_global(socket)
+            socket.send(global_file_list)
         elif command_split[0] == "read" or command_split[0] == "write":
             send_file(socket, command_split[1])
         else:
@@ -98,13 +116,9 @@ def recieve_from_client(socket):
 
 
 def list_local(directory):
+    global local_file_list
     temp_list = os.listdir(directory)
-    return temp_list
-
-
-def list_global(socket):
-    for server in servers_connected:
-        server.send("list local")
+    local_file_list = temp_list
 
 
 def send_file(client_sock, file_name):
@@ -132,12 +146,12 @@ def is_in_servers_to_connect(port, list):
 
 
 def main():
-
+    global local_file_list, servers_connected, servers_to_connect, clients_connected, global_file_list
     # create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # get local machine name
-    host = socket.gethostname()
+    host = '127.0.0.1'
     # bind to the port
     server_socket.bind((host, port))
     print("bind socket port: %s" % (port))
@@ -161,21 +175,29 @@ def main():
         else:
             print('connecting to:', sock)
             server_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print('server_conn created')
             server_conn.settimeout(3)
-            print('set timeout')
             try:
-                print('start connect')
+                print(sock)
                 ret = server_conn.connect_ex((sock[0], sock[1]))
-                print('connect executed')
                 server_conn.settimeout(None)
                 if ret == 0:
-                    print('connect successful')
                     sock_temp = [sock[0], sock[1], server_conn]
                     lock.acquire(True)
                     servers_connected.append(sock_temp)
                     print('Connect successful')
-                    print(servers_connected)
+                    lock.release()
+                    print('sending list')
+                    list_str = "/n".join(local_file_list)
+                    msg = str(sock[1]) + " " + list_str + " " + "###"
+                    lock.acquire(True)
+                    server_conn.sendall(msg.encode())
+                    lock.release()
+                    print('recieve list from connected socket')
+                    data = server_conn.recv(1024).decode()
+                    while(data[-3:] != "###"):
+                        data += server_conn.recv(1024).decode()
+                    lock.acquire(True)
+                    global_file_list.append(data[:-3])
                     lock.release()
             except socket.error:
                 print("connect failed on " + sock[0], sock[1])
