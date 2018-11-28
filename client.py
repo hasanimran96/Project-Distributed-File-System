@@ -46,22 +46,27 @@ def list_files(server_sock, directory):
 
 
 def send_file(server_sock, file_name):
-    with open(file_name, "rb") as file_to_send:
-        for data in file_to_send:
+    with open(root + file_name, 'rb') as fd:
+        data = fd.read(1024)
+        while data:
+            print(data)
             server_sock.sendall(data)
-    print("file sent to server")
+            data = fd.read(1024)
+        fd.close()
+        server_sock.sendall('###'.encode())
 
 
-def recieve_file(server_sock, file_name):
-    with open(file_name, "wb") as file_to_write:
+def recieve_file(client_sock, file_name):
+    data = client_sock.recv(1024)
+    with open(root + file_name, 'wb') as fd:
         while True:
-            data = server_sock.recv(1024)
-            # print data
-            if not data:
+            if data.decode().endswith('###'):
+                data = data[:-3]
+                fd.write(data)
                 break
-            # print data
-            file_to_write.write(data)
-    print("recieved file from server")
+            fd.write(data)
+            data = client_sock.recv(1024)
+        fd.close()
 
 
 def create_directory(directory_name):
@@ -79,14 +84,16 @@ def main():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # get server ip
-    print("Enter server IP")
-    msg = input()
-    host = msg
+    # print("Enter server IP")
+    # msg = input()
+    # host = msg
+    host = "127.0.0.1"
 
     # get server port
-    print("Enter server port")
-    msg = input()
-    port = int(msg)
+    # print("Enter server port")
+    # msg = input()
+    # port = int(msg)
+    port = 9999
 
     # connection to hostname on the port.
     s.connect((host, port))
@@ -98,43 +105,49 @@ def main():
     while True:
         print("Write a command to execute or type help")
         command = input()
-        command_split = command.split()
-        if len(command_split) < 1:
+        if len(command) < 1:
             print("Please write a command or type help")
-        elif command_split[0] == "hello":
+        elif command[:5] == "hello":
             print("hello from client")
-        elif command_split[0] == "open":
-            open_file(command_split[1])
-        elif command_split[0] == "read":
-            s.send(command)
-            recieve_file(s, command_split[1])
-            message = read_from_file(command_split[1])
-            print(message)
-        elif command_split[0] == "create":
-            create_file(command_split[1])
-        elif command_split[0] == "write":
-            s.send(command)
-            recieve_file(s, command_split[1])
-            str_temp = " ".join(str(x) for x in command_split[2:])
-            write_to_file(command_split[1], str_temp)
-            # add a method to let server know that you are know sending a file
-            send_file(s, command_split[1])
-        elif command_split[0] == "append":
-            str_temp = " ".join(str(x) for x in command_split[2:])
-            append_to_file(command_split[1], str_temp)
-        elif command_split[0] == "list":
-            s.sendall("list".encode())
-            while True:
-                data = s.recv(1024).decode()
+        elif command[:4] == "open":
+            open_file(command[5:])
+        elif command[:4] == "read":
+            s.sendall(command.encode())
+            data = s.recv(1024).decode()
+            if(data == "sending file"):
+                recieve_file(s, command[5:])
+                message = read_from_file(command[5:])
+                print(message)
+            else:
                 print(data)
-                if not data:
-                    break
-                print(data)
-        elif command_split[0] == "mkdir":
-            create_directory(command_split[1])
-        # elif(command_split[0]=="close"):
-        elif command_split[0] == "exit":
-            break
+        # elif command_split[0] == "create":
+        #     create_file(command_split[1])
+        elif command[:5] == "write":
+            print("enter message to write")
+            msg = input()
+            write_to_file(command[6:], msg)
+            s.send("write".encode())
+            send_file(s, command[6:])
+        #     s.send(command)
+        #     recieve_file(s, command_split[1])
+        #     str_temp = " ".join(str(x) for x in command_split[2:])
+        #     write_to_file(command_split[1], str_temp)
+        #     # add a method to let server know that you are know sending a file
+        #     send_file(s, command_split[1])
+        # elif command_split[0] == "append":
+        #     str_temp = " ".join(str(x) for x in command_split[2:])
+        #     append_to_file(command_split[1], str_temp)
+        elif command[:4] == "list":
+            s.sendall((command).encode())
+            data = s.recv(1024).decode()
+            while(data[-3:] != "###"):
+                data += s.recv(1024).decode()
+            print(data[:-3])
+        # elif command_split[0] == "mkdir":
+        #     create_directory(command_split[1])
+        # # elif(command_split[0]=="close"):
+        # elif command_split[0] == "exit":
+        #     break
         else:
             print("Invalid intruction. Type help")
 

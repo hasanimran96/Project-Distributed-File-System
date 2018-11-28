@@ -53,7 +53,8 @@ def listen_server(serversocket):
             global_file_list.append(data[:-3])
             lock.release()
             list_str = " ".join(list_local("Root"))
-            msg = str(addr[1]) + " " + list_str + " " + "###"
+            msg = str(server_sock_accept.getpeername()) + \
+                " " + list_str + " " + "###"
             lock.acquire(True)
             server_sock_accept.sendall(msg.encode())
             lock.release()
@@ -109,7 +110,7 @@ def recieve_from_client(socket):
         if len(command) < 1:
             socket.close()
         elif command == "list":
-            socket.sendall((str(global_file_list)).encode())
+            socket.sendall((str(global_file_list)+"###").encode())
         elif command == "read" or command == "write":
             send_file(socket, command[5:])
         else:
