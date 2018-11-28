@@ -151,7 +151,7 @@ def recieve_from_client(socket):
                 send_file(socket, command[5:])
             else:
                 socket.sendall(("No such file exists").encode())
-        elif command == "write":
+        elif command[:5] == "write":
             recieve_file(socket, command[6:])
         else:
             socket.sendall(("error from server").encode())

@@ -126,7 +126,7 @@ def main():
             print("enter message to write")
             msg = input()
             write_to_file(command[6:], msg)
-            s.send("write".encode())
+            s.sendall(command.encode())
             send_file(s, command[6:])
         #     s.send(command)
         #     recieve_file(s, command_split[1])

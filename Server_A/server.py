@@ -27,6 +27,40 @@ local_file_list = []
 global_file_list = []
 
 
+def list_local(directory):
+    temp_list = os.listdir(directory)
+    return temp_list
+
+
+def check_if_file_exists(file_name):
+    fname = "./" + file_name
+    return os.path.isfile(fname)
+
+
+def send_file(server_sock, file_name):
+    with open(root + file_name, 'rb') as fd:
+        data = fd.read(1024)
+        while data:
+            print(data)
+            server_sock.sendall(data)
+            data = fd.read(1024)
+        fd.close()
+        server_sock.sendall('###'.encode())
+
+
+def recieve_file(client_sock, file_name):
+    data = client_sock.recv(1024)
+    with open(root + file_name, 'wb') as fd:
+        while True:
+            if data.decode().endswith('###'):
+                data = data[:-3]
+                fd.write(data)
+                break
+            fd.write(data)
+            data = client_sock.recv(1024)
+        fd.close()
+
+
 def listen_server(serversocket):
     global servers_connected, global_file_list
     print('listening server thread')
@@ -117,44 +151,10 @@ def recieve_from_client(socket):
                 send_file(socket, command[5:])
             else:
                 socket.sendall(("No such file exists").encode())
-        elif command == "write":
+        elif command[:5] == "write":
             recieve_file(socket, command[6:])
         else:
             socket.sendall(("error from server").encode())
-
-
-def list_local(directory):
-    temp_list = os.listdir(directory)
-    return temp_list
-
-
-def check_if_file_exists(file_name):
-    fname = "./" + file_name
-    return os.path.isfile(fname)
-
-
-def send_file(server_sock, file_name):
-    with open(root + file_name, 'rb') as fd:
-        data = fd.read(1024)
-        while data:
-            print(data)
-            server_sock.sendall(data)
-            data = fd.read(1024)
-        fd.close()
-        server_sock.sendall('###'.encode())
-
-
-def recieve_file(client_sock, file_name):
-    data = client_sock.recv(1024)
-    with open(root + file_name, 'wb') as fd:
-        while True:
-            if data.decode().endswith('###'):
-                data = data[:-3]
-                fd.write(data)
-                break
-            fd.write(data)
-            data = client_sock.recv(1024)
-        fd.close()
 
 
 def is_in_servers_to_connect(port, list):
