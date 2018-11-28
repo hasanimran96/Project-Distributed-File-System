@@ -74,7 +74,6 @@ def create_directory(directory_name):
 
 def main():
     print("Project DFS!")
-    print("Write a command to execute or type help")
 
     # create a socket object
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -94,13 +93,16 @@ def main():
 
     # Receive no more than 1024 bytes
     msg = s.recv(1024)
-    print(msg.decode("utf-8"))
+    print(msg.decode())
 
     while True:
+        print("Write a command to execute or type help")
         command = input()
         command_split = command.split()
         if len(command_split) < 1:
             print("Please write a command or type help")
+        elif command_split[0] == "hello":
+            print("hello from client")
         elif command_split[0] == "open":
             open_file(command_split[1])
         elif command_split[0] == "read":
@@ -121,13 +123,12 @@ def main():
             str_temp = " ".join(str(x) for x in command_split[2:])
             append_to_file(command_split[1], str_temp)
         elif command_split[0] == "list":
-            s.send(command)
+            s.sendall("list".encode())
             while True:
-                data = s.recv(1024)
-                # print data
+                data = s.recv(1024).decode()
+                print(data)
                 if not data:
                     break
-                # print data
                 print(data)
         elif command_split[0] == "mkdir":
             create_directory(command_split[1])
