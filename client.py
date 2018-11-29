@@ -1,5 +1,6 @@
 import os
 import socket
+import ast
 
 # set directory for file server
 root = "Root/"
@@ -15,8 +16,12 @@ def close_file(fd):
 
 
 def create_file(file_name):
-    fd = open(root + file_name, "x")
-    return fd
+    try:
+        with open(root + file_name, "x") as fd:
+            fd.close()
+            return True
+    except FileExistsError:
+        return False
 
 
 def read_from_file(file_name):
@@ -120,8 +125,8 @@ def main():
                 print(message)
             else:
                 print(data)
-        # elif command_split[0] == "create":
-        #     create_file(command_split[1])
+        elif command[:6] == "create":
+            create_file(command[7:])
         elif command[:5] == "write":
             print("enter message to write")
             msg = input()
@@ -137,12 +142,13 @@ def main():
         # elif command_split[0] == "append":
         #     str_temp = " ".join(str(x) for x in command_split[2:])
         #     append_to_file(command_split[1], str_temp)
-        elif command[:4] == "list":
+        elif command == "list":
             s.sendall((command).encode())
             data = s.recv(1024).decode()
             while(data[-3:] != "###"):
                 data += s.recv(1024).decode()
-            print(data[:-3])
+            data = data[:-3]
+            print(data)
         # elif command_split[0] == "mkdir":
         #     create_directory(command_split[1])
         # # elif(command_split[0]=="close"):
