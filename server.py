@@ -162,6 +162,11 @@ def recieve_from_server(socket):
             temp_list = local_file_list
             msg = "list | " + temp_list
             socket.sendall().encode()
+        elif msg[:4] == "send":
+            socket.sendall(("recieve " + msg[5:]).encode())
+            send_file(socket, msg[5:])
+        elif msg[:7] == 'recieve':
+            recieve_file(socket, msg[8:])
         else:
             print(msg)
 
@@ -186,11 +191,22 @@ def recieve_from_client(socket):
             list_str = list_str[:-1]
             socket.sendall((list_str+"###").encode())
         elif command[:4] == "read":
-            if check_if_file_exists:
-                socket.sendall(("sending file").encode())
-                send_file(socket, command[5:])
-            else:
-                socket.sendall(("No such file exists").encode())
+            temp_list = global_file_list
+            for item in temp_list:
+                if item[0] == command[5:]:
+                    if item[1] == 'self':
+                        socket.sendall(("sending file").encode())
+                        send_file(socket, command[5:])
+                        break
+                    else:
+                        item[1].sendall(("send "+command[5:]).encode())
+                        time.sleep(1)
+                        socket.sendall(("sending file").encode())
+                        send_file(socket, command[5:])
+                        break
+                else:
+                    socket.sendall(("No such file exists").encode())
+                    break
         elif command[:5] == "write":
             recieve_file(socket, command[6:])
         else:
