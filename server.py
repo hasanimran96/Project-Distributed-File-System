@@ -113,7 +113,7 @@ def listen_server(serversocket):
             split_data = data.split(',')
             for item in split_data:
                 lock.acquire(True)
-                global_file_list.append([item, sock_temp])
+                global_file_list.append([item, server_sock_accept])
                 lock.release()
             temp_list = list_local("Root")
             temp_list_str = list_to_string(temp_list)
@@ -156,6 +156,7 @@ def recieve_from_server(socket):
     global local_file_list
     while True:
         msg = socket.recv(1024).decode()
+        print(msg)
         if len(msg) < 1:
             socket.close()
         elif msg == "list":
@@ -190,23 +191,25 @@ def recieve_from_client(socket):
                 list_str += item + "\n"
             list_str = list_str[:-1]
             socket.sendall((list_str+"###").encode())
-        elif command[:4] == "read":
-            temp_list = global_file_list
+        elif command[:4] == 'read':
+            temp_list == global_file_list
+            file_here = False
             for item in temp_list:
                 if item[0] == command[5:]:
+                    file_here = True
                     if item[1] == 'self':
-                        socket.sendall(("sending file").encode())
+                        socket.sendall(('sending file').encode())
                         send_file(socket, command[5:])
                         break
                     else:
-                        item[1].sendall(("send "+command[5:]).encode())
-                        time.sleep(1)
-                        socket.sendall(("sending file").encode())
+                        # problem-->how will client thread send to server thread?
+                        item[1].sendall(('send '+command[5:]).encode())
+                        time.sleep(5)
+                        socket.sendall(('sending file').encode())
                         send_file(socket, command[5:])
                         break
-                else:
-                    socket.sendall(("No such file exists").encode())
-                    break
+            if(not file_here):
+                socket.sendall(('No Such File Exists').encode())
         elif command[:5] == "write":
             recieve_file(socket, command[6:])
         else:
@@ -283,7 +286,7 @@ def main():
                     split_data = data.split(',')
                     for item in split_data:
                         lock.acquire(True)
-                        global_file_list.append([item, sock_temp])
+                        global_file_list.append([item, server_conn])
                         lock.release()
             except socket.error:
                 print("connect failed on " + sock[0], sock[1])
