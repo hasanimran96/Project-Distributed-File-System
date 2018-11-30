@@ -1,0 +1,10 @@
+As explained in class, you are required to implement simulation of Distributed File System with a single system image and replication support. 
+
+You need to demonstrate your project on atleast 3 servers  (physically separate machines) and 2 clients (clients can run on server machines).
+
+1) You need to submit the entire source code with executable files and a help file on how to compile and install your project on a new machine (both client and server). 2) Also you need to submit on LMS and bring a print-out of the report that will atleast cover:
+
+a. Architecture of Your Code covering: 
+    1. what semantics were chosen etc.
+    2. Overall flow of messages and components designed (processes, threads etc.)
+b. Assumptions if any
