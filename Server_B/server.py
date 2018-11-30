@@ -62,6 +62,14 @@ def create_file(file_name):
         return False
 
 
+def delete_file(file_name):
+    if os.path.exists(root + file_name):
+        os.remove(root + file_name)
+        return True
+    else:
+        return False
+
+
 def send_file(server_sock, file_name):
     with open(root + file_name, 'rb') as fd:
         data = fd.read(1024)
@@ -113,7 +121,8 @@ def listen_server(serversocket):
             split_data = data.split(',')
             for item in split_data:
                 lock.acquire(True)
-                global_file_list.append([item, server_sock_accept])
+                global_file_list.append(
+                    [item, server_sock_accept, server_sock_accept.getpeername()])
                 lock.release()
             temp_list = list_local("Root")
             temp_list_str = list_to_string(temp_list)
@@ -178,6 +187,7 @@ def recieve_from_client(socket):
         command = socket.recv(1024).decode()
         if len(command) < 1:
             socket.close()
+        # ---------------------------------------------------
         elif command[:4] == "list":
             lock.acquire(True)
             temp_list = global_file_list
@@ -191,8 +201,9 @@ def recieve_from_client(socket):
                 list_str += item + "\n"
             list_str = list_str[:-1]
             socket.sendall((list_str+"###").encode())
+         # ---------------------------------------------------
         elif command[:4] == 'read':
-            temp_list == global_file_list
+            temp_list = global_file_list
             file_here = False
             for item in temp_list:
                 if item[0] == command[5:]:
@@ -202,15 +213,78 @@ def recieve_from_client(socket):
                         send_file(socket, command[5:])
                         break
                     else:
-                        item[1].sendall(('send '+command[5:]).encode())
-                        time.sleep(5)
-                        socket.sendall(('sending file').encode())
-                        send_file(socket, command[5:])
+                        socket.sendall(("connect to " + item[2][0]).encode())
                         break
             if(not file_here):
                 socket.sendall(('No Such File Exists').encode())
+        # -------------------------------------------------------
         elif command[:5] == "write":
-            recieve_file(socket, command[6:])
+            temp_list = global_file_list
+            file_here = False
+            for item in temp_list:
+                if item[0] == command[6:]:
+                    file_here = True
+                    if item[1] == 'self':
+                        socket.sendall(('sending file').encode())
+                        send_file(socket, command[6:])
+                        recieve_file(socket, command[6:])
+                        break
+                    else:
+                        socket.sendall(("connect to " + item[2][0]).encode())
+                        break
+            if(not file_here):
+                socket.sendall(("file doesnot exist").encode())
+        # -------------------------------------------------------
+        elif command[:6] == "create":
+            temp_list = global_file_list
+            file_here = False
+            for item in temp_list:
+                if item[0] == command[7:]:
+                    file_here = True
+                    socket.sendall(("File already exists").encode())
+                    break
+            if(not file_here):
+                socket.sendall(("create possible").encode())
+                if((create_file(command[7:]))):
+                    print("file created " + command[7:])
+                else:
+                    print("create file error")
+        # ------------------------------------------------------
+        elif command[:6] == 'delete':
+            temp_list = global_file_list
+            file_here = False
+            for item in temp_list:
+                if item[0] == command[7:]:
+                    file_here = True
+                    if item[1] == 'self':
+                        if((delete_file(command[7:]))):
+                            socket.sendall(('file deleted').encode())
+                            break
+                        else:
+                            socket.sendall(("file delete error").encode())
+                    else:
+                        socket.sendall(("connect to " + item[2][0]).encode())
+                        break
+            if(not file_here):
+                socket.sendall(('No Such File Exists').encode())
+        # -------------------------------------------------------
+        elif command[:6] == "append":
+            temp_list = global_file_list
+            file_here = False
+            for item in temp_list:
+                if item[0] == command[7:]:
+                    file_here = True
+                    if item[1] == 'self':
+                        socket.sendall(('sending file').encode())
+                        send_file(socket, command[7:])
+                        recieve_file(socket, command[7:])
+                        break
+                    else:
+                        socket.sendall(("connect to " + item[2][0]).encode())
+                        break
+            if(not file_here):
+                socket.sendall(("file doesnot exist").encode())
+        # ---------------------------------------------------------
         else:
             socket.sendall(("error from server").encode())
 
@@ -285,7 +359,8 @@ def main():
                     split_data = data.split(',')
                     for item in split_data:
                         lock.acquire(True)
-                        global_file_list.append([item, server_conn])
+                        global_file_list.append(
+                            [item, server_conn, server_conn.getpeername()])
                         lock.release()
             except socket.error:
                 print("connect failed on " + sock[0], sock[1])
