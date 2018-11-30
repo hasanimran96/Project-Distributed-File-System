@@ -42,6 +42,7 @@ def list_to_string(list_to_convert):
 
 
 def list_local_file_list(directory):
+    global local_file_list
     del local_file_list[:]
     temp_list = os.listdir(directory)
     for item in temp_list:
@@ -95,7 +96,7 @@ def recieve_file(client_sock, file_name):
 
 
 def listen_server(serversocket):
-    global servers_connected, global_file_list
+    global global_file_list, servers_connected
     print('listening server thread')
     # queue up to 5 requests
     serversocket.listen(5)
@@ -139,7 +140,7 @@ def listen_server(serversocket):
 
 
 def listen_client(clientsocket):
-    global clients_connected, global_file_list
+    global clients_connected
     print('client listening thread')
     # queue up to 5 requests
     clientsocket.listen(5)
@@ -162,23 +163,43 @@ def listen_client(clientsocket):
 
 
 def recieve_from_server(socket):
-    global local_file_list
+    global global_file_list
     while True:
         msg = socket.recv(1024).decode()
         print(msg)
         if len(msg) < 1:
             socket.close()
+        # ---------------------------------------------
         elif msg == "list":
             temp_list = local_file_list
             msg = "list | " + temp_list
             socket.sendall().encode()
+        # --------------------------------------------
         elif msg[:4] == "send":
             socket.sendall(("recieve " + msg[5:]).encode())
             send_file(socket, msg[5:])
+        # -------------------------------------------
         elif msg[:7] == 'recieve':
             recieve_file(socket, msg[8:])
+        # ----------------------------------------------
+        elif msg[:7] == 'gfl add':
+            global_file_list.append([msg[8:], socket, socket.getpeername()])
+            print("list updated")
+        # --------------------------------------------
+        elif msg[:7] == 'gfl del':
+            global_file_list.remove([msg[8:], socket, socket.getpeername()])
+            print("list updated")
+        # --------------------------------------------
+        elif msg[:9] == 'replicate':
+            recieve_file(socket, msg[10:])
+        # --------------------------------------------
         else:
             print(msg)
+
+
+def replicate(socket, file_name):
+    socket.sendall("replicate " + file_name)
+    send_file(socket, file_name)
 
 
 def recieve_from_client(socket):
@@ -247,6 +268,9 @@ def recieve_from_client(socket):
                 socket.sendall(("create possible").encode())
                 if((create_file(command[7:]))):
                     print("file created " + command[7:])
+                    global_file_list.append([command[7:], 'self'])
+                    for servers in servers_connected:
+                        servers[2].sendall(('gfl add '+command[7:]).encode())
                 else:
                     print("create file error")
         # ------------------------------------------------------
@@ -259,6 +283,10 @@ def recieve_from_client(socket):
                     if item[1] == 'self':
                         if((delete_file(command[7:]))):
                             socket.sendall(('file deleted').encode())
+                            global_file_list.remove([command[7:], 'self'])
+                            for servers in servers_connected:
+                                servers[2].sendall(
+                                    ('gfl del '+command[7:]).encode())
                             break
                         else:
                             socket.sendall(("file delete error").encode())
@@ -297,8 +325,23 @@ def is_in_servers_to_connect(port, list):
         return False
 
 
+def calculate_cost_of_creation():
+    temp_list = global_file_list
+    count1 = 0
+    count2 = 0
+    for item in temp_list:
+        if item[2] == "self":
+            count1 = count1 + 1
+        else:
+            count2 = count2 + 1
+    if(count1 <= count2):
+        return True
+    else:
+        return False
+
+
 def main():
-    global local_file_list, servers_connected, servers_to_connect, clients_connected, global_file_list
+    global global_file_list, servers_connected
 
     list_local_file_list("Root")
     for item in local_file_list:
@@ -362,6 +405,12 @@ def main():
                         global_file_list.append(
                             [item, server_conn, server_conn.getpeername()])
                         lock.release()
+                    thread_recieve_main = threading.Thread(
+                        target=recieve_from_server, kwargs={
+                            "socket": server_conn}
+                    )
+                    thread_recieve_main.daemon = True
+                    thread_recieve_main.start()
             except socket.error:
                 print("connect failed on " + sock[0], sock[1])
 
@@ -377,12 +426,18 @@ def main():
 
     while True:
         command = input()
+        # --------------------------------------------
         if(command == 'close' or command == 'exit'):
             sys.exit()
-        if(command == 'listg'):
+        # -----------------------------------------
+        elif(command == 'listg'):
             print(global_file_list)
-        if(command == 'listl'):
+        # ------------------------------------------
+        elif(command == 'listl'):
             print(local_file_list)
+        # -----------------------------------------
+        else:
+            print("invalid command")
 
 
 main()
