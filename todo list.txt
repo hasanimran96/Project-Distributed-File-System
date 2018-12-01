@@ -1,0 +1,4 @@
+todo list:
+1)implement open, close
+2)Should be a check for whether the file is a text file, since opening with notepad or equivalent.
+3)cost_create_function

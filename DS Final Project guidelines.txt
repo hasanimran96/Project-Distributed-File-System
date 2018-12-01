@@ -1,4 +1,4 @@
-Project points that I noted down:
+Project points:
 1)Have to present a single system image
 2)Don't have to build an entire service, just a simulation of sorts. Can be on GUI or console
 3)Must have some degree of replication(wasn't elaborated on really). Not a priority though

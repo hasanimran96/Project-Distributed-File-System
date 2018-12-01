@@ -4,14 +4,16 @@ import os
 import time
 import sys
 import ast
+import random
+import struct
 
 # set directory for file server
 root = "Root/"
 # set port for server
-port = 5556
+port = 5555
 # set port for server client socket
-c_port = 9998
-servers_to_connect = [['127.0.0.1', 5555], ['127.0.0.1', 5557]]
+c_port = 9999
+servers_to_connect = [['127.0.0.1', 5555], ['127.0.0.1', 5555]]
 
 # locking mechanism
 lock = threading.Lock()
@@ -75,7 +77,7 @@ def send_file(server_sock, file_name):
     with open(root + file_name, 'rb') as fd:
         data = fd.read(1024)
         while data:
-            print(data)
+            # print(data)
             server_sock.sendall(data)
             data = fd.read(1024)
         fd.close()
@@ -93,6 +95,64 @@ def recieve_file(client_sock, file_name):
             fd.write(data)
             data = client_sock.recv(1024)
         fd.close()
+
+
+def check_extension(file_name):
+    return(file_name.lower().endswith(('.txt', '.c', '.py')))
+
+
+# --------------------------------------------------
+# functions for recieving and sending files on servers
+# --------------------------------------------------
+
+
+def send_one_message(sock, data):
+    length = len(data)
+    sock.sendall(struct.pack('!I', length))
+    sock.sendall(data)
+
+
+def recv_one_message(sock):
+    lengthbuf = recvall(sock, 4)
+    length, = struct.unpack('!I', lengthbuf)
+    return recvall(sock, length)
+
+
+def recvall(sock, count):
+    buf = b''
+    while count:
+        newbuf = sock.recv(count)
+        if not newbuf:
+            return None
+        buf += newbuf
+        count -= len(newbuf)
+    return buf
+
+
+def recieve_file_server(client_sock, file_name):
+    print("recieve_file_server function")
+    with open(root + file_name, 'wb') as fd:
+        while True:
+            data = recv_one_message(client_sock)
+            if data.decode().endswith('EOF'):
+                data = data[:-3]
+                fd.write(data)
+                break
+            fd.write(data)
+        fd.close()
+
+
+def send_file_server(server_sock, file_name):
+    with open(root + file_name, 'rb') as fd:
+        data = fd.read(1024)
+        while data:
+            send_one_message(server_sock, data)
+            data = fd.read(1024)
+        send_one_message(server_sock, ('EOF').encode())
+        fd.close()
+
+# -----------------------------------------------
+# -----------------------------------------------
 
 
 def listen_server(serversocket):
@@ -152,7 +212,7 @@ def listen_client(clientsocket):
         lock.acquire(True)
         clients_connected.append(sock_temp)
         lock.release()
-        msg = "you are connected to server" + str(port)
+        msg = "you are connected to server"
         client_sock_accept.sendall(msg.encode())
 
         thread_recieve = threading.Thread(
@@ -166,14 +226,11 @@ def recieve_from_server(socket):
     global global_file_list
     while True:
         msg = socket.recv(1024).decode()
-        print(msg)
-        if len(msg) < 1:
+        if not msg:
             socket.close()
-        # ---------------------------------------------
-        elif msg == "list":
-            temp_list = local_file_list
-            msg = "list | " + temp_list
-            socket.sendall().encode()
+        # ----------------------------------------------
+        elif len(msg) < 1:
+            socket.close()
         # --------------------------------------------
         elif msg[:4] == "send":
             socket.sendall(("recieve " + msg[5:]).encode())
@@ -182,16 +239,72 @@ def recieve_from_server(socket):
         elif msg[:7] == 'recieve':
             recieve_file(socket, msg[8:])
         # ----------------------------------------------
-        elif msg[:7] == 'gfl_add':
+        elif msg[:7] == 'gfl add':
             global_file_list.append([msg[8:], socket, socket.getpeername()])
             print("list updated")
         # --------------------------------------------
-        elif msg[:7] == 'gfl_del':
+        elif msg[:7] == 'gfl del':
             global_file_list.remove([msg[8:], socket, socket.getpeername()])
             print("list updated")
         # --------------------------------------------
-        else:
+        elif msg[:16] == 'replicate_create':
             print(msg)
+            if(create_file(msg[17:])):
+                print("replicated file created " + msg[17:])
+                global_file_list.append([msg[17:], 'self'])
+                for servers in servers_connected:
+                    servers[2].sendall(('gfl add '+msg[17:]).encode())
+            else:
+                print("replicated file created error")
+        # --------------------------------------------
+        elif msg[:16] == 'replicate_update':
+            print(msg)
+            recieve_file_server(socket, msg[17:])
+            print("replicated file recieved " + msg[17:])
+        # --------------------------------------------
+        elif msg[:16] == 'replicate_delete':
+            print(msg)
+            if(delete_file(msg[17:])):
+                print("replicated file deleted " + msg[17:])
+                global_file_list.remove([msg[17:], 'self'])
+                for servers in servers_connected:
+                    servers[2].sendall(('gfl del '+msg[17:]).encode())
+            else:
+                print("replicated file delete error")
+        # --------------------------------------------
+        else:
+            print("Invalid instruction --> "+msg)
+
+
+def replicate_create(file_name):
+    server_to_replicate = servers_connected[random.randint(0, 1)][2]
+    server_to_replicate.sendall(("replicate_create " + file_name).encode())
+
+
+def replicate_update(file_name):
+    temp_list = global_file_list
+    file_here = False
+    for item in temp_list:
+        if item[0] == file_name:
+            file_here = True
+            if item[1] != 'self':
+                item[1].sendall(("replicate_update "+file_name).encode())
+                send_file_server(item[1], file_name)
+                print("file sent " + file_name)
+    if(not file_here):
+        print("file not found on other servers")
+
+
+def replicate_delete(file_name):
+    temp_list = global_file_list
+    file_here = False
+    for item in temp_list:
+        if item[0] == file_name:
+            file_here = True
+            if item[1] != 'self':
+                item[1].sendall(("replicate_delete "+file_name).encode())
+    if(not file_here):
+        print("file not found on other servers")
 
 
 def recieve_from_client(socket):
@@ -199,6 +312,9 @@ def recieve_from_client(socket):
     while True:
         command = socket.recv(1024).decode()
         if len(command) < 1:
+            socket.close()
+        # ---------------------------------------------------
+        elif command == "exit":
             socket.close()
         # ---------------------------------------------------
         elif command[:4] == "list":
@@ -216,20 +332,25 @@ def recieve_from_client(socket):
             socket.sendall((list_str+"###").encode())
          # ---------------------------------------------------
         elif command[:4] == 'read':
-            temp_list = global_file_list
-            file_here = False
-            for item in temp_list:
-                if item[0] == command[5:]:
-                    file_here = True
-                    if item[1] == 'self':
-                        socket.sendall(('sending file').encode())
-                        send_file(socket, command[5:])
-                        break
-                    else:
-                        socket.sendall(("connect to " + item[2][0]).encode())
-                        break
-            if(not file_here):
-                socket.sendall(('No Such File Exists').encode())
+            if(check_extension(command[5:])):
+                temp_list = global_file_list
+                file_here = False
+                for item in temp_list:
+                    if item[0] == command[5:]:
+                        file_here = True
+                        if item[1] == 'self':
+                            socket.sendall(('sending file').encode())
+                            send_file(socket, command[5:])
+                            print("file sent " + command[5:])
+                            break
+                        else:
+                            socket.sendall(
+                                ("connect to " + item[2][0]).encode())
+                            break
+                if(not file_here):
+                    socket.sendall(('No Such File Exists').encode())
+            else:
+                socket.sendall(('File not readable').encode())
         # -------------------------------------------------------
         elif command[:5] == "write":
             temp_list = global_file_list
@@ -240,7 +361,11 @@ def recieve_from_client(socket):
                     if item[1] == 'self':
                         socket.sendall(('sending file').encode())
                         send_file(socket, command[6:])
+                        print("file sent " + command[6:])
                         recieve_file(socket, command[6:])
+                        print("file recieved " + command[6:])
+                        replicate_update(command[6:])
+                        print("file sent to update replicated file")
                         break
                     else:
                         socket.sendall(("connect to " + item[2][0]).encode())
@@ -262,7 +387,9 @@ def recieve_from_client(socket):
                     print("file created " + command[7:])
                     global_file_list.append([command[7:], 'self'])
                     for servers in servers_connected:
-                        servers[2].sendall(('gfl_add '+command[7:]).encode())
+                        servers[2].sendall(('gfl add '+command[7:]).encode())
+                    replicate_create(command[7:])
+                    print("file sent for replication")
                 else:
                     print("create file error")
         # ------------------------------------------------------
@@ -276,9 +403,8 @@ def recieve_from_client(socket):
                         if((delete_file(command[7:]))):
                             socket.sendall(('file deleted').encode())
                             global_file_list.remove([command[7:], 'self'])
-                            for servers in servers_connected:
-                                servers[2].sendall(
-                                    ('gfl_del '+command[7:]).encode())
+                            print("deleting replicates of the file")
+                            replicate_delete(command[7:])
                             break
                         else:
                             socket.sendall(("file delete error").encode())
@@ -297,7 +423,11 @@ def recieve_from_client(socket):
                     if item[1] == 'self':
                         socket.sendall(('sending file').encode())
                         send_file(socket, command[7:])
+                        print("file sent " + command[7:])
                         recieve_file(socket, command[7:])
+                        print("file recieved " + command[7:])
+                        replicate_update(command[7:])
+                        print("file sent to update replicated file")
                         break
                     else:
                         socket.sendall(("connect to " + item[2][0]).encode())
@@ -317,6 +447,21 @@ def is_in_servers_to_connect(port, list):
         return False
 
 
+def calculate_cost_of_creation():
+    temp_list = global_file_list
+    count1 = 0
+    count2 = 0
+    for item in temp_list:
+        if item[2] == "self":
+            count1 = count1 + 1
+        else:
+            count2 = count2 + 1
+    if(count1 <= count2):
+        return True
+    else:
+        return False
+
+
 def main():
     global global_file_list, servers_connected
 
@@ -328,9 +473,10 @@ def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # get local machine name
-    host = '127.0.0.1'
+    host = socket.gethostbyname()
     # bind to the port
     server_socket.bind((host, port))
+    print("server ip " + str(host))
     print("bind socket port: %s" % (port))
 
     try:

@@ -1,6 +1,8 @@
 import os
 import socket
 import ast
+import subprocess
+import sys
 
 # set directory for file server
 root = "Root/"
@@ -62,7 +64,7 @@ def send_file(server_sock, file_name):
     with open(root + file_name, 'rb') as fd:
         data = fd.read(1024)
         while data:
-            print(data)
+            # print(data)
             server_sock.sendall(data)
             data = fd.read(1024)
         fd.close()
@@ -90,20 +92,24 @@ def create_directory(directory_name):
         print("Directory ", directory_name, " already exists")
 
 
+def check_extension(file_name):
+    return(file_name.lower().endswith(('.txt', '.c', '.py')))
+
+
 def main():
     print("Project DFS!")
 
     # get server ip
-    # print("Enter server IP")
-    # msg = input()
-    # host = msg
-    host = "127.0.0.1"
+    print("Enter server IP")
+    msg = input()
+    host = msg
+    #host = "127.0.0.1"
 
     # get server port
-    # print("Enter server port")
-    # msg = input()
-    # port = int(msg)
-    port = 9999
+    print("Enter server port")
+    msg = input()
+    port = int(msg)
+    #port = 9999
 
     while True:
 
@@ -125,34 +131,59 @@ def main():
             # ------------------------------------------------
             elif command[:5] == "hello":
                 print("hello from client")
+            # ------------------------------------------------
+            elif command == "exit":
+                s.sendall(command.encode())
+                s.close()
+                sys.exit()
             # -------------------------------------------------
             elif command[:4] == "open":
                 open_file(command[5:])
             # ------------------------------------------------
+            elif command[:5] == "close":
+                open_file(command[6:])
+            # ------------------------------------------------
             elif command[:4] == "read":
                 s.sendall(command.encode())
                 data = s.recv(1024).decode()
-                if(data == "sending file"):
+                if(data == 'File not readable'):
+                    print(data)
+                elif(data == "sending file"):
                     recieve_file(s, command[5:])
-                    message = read_from_file(command[5:])
-                    print(message)
+
+                    print("Press 1 to read in terminal")
+                    print("Press 2 to read in editor")
+
+                    msg = input()
+                    if(int(msg) == 1):
+                        message = read_from_file(command[5:])
+                        print(message)
+                    else:
+                        proc = subprocess.Popen(
+                            ['leafpad', root + command[6:]])
+                        proc.wait()
+
                 elif(data[:10] == "connect to"):
+                    print("connecting to a different server")
+                    print("please enter the command again")
                     host = data[11:]
-                    port = 9998
                     s.close()
                     break
                 else:
                     print(data)
             # ----------------------------------------------
             elif command[:6] == "create":
-                s.sendall(command.encode())
-                data = s.recv(1024).decode()
-                if(data == "File already exists"):
-                    print(data)
-                elif(data == "create possible"):
-                    print("file created on server")
+                if(check_extension(command[5:])):
+                    s.sendall(command.encode())
+                    data = s.recv(1024).decode()
+                    if(data == "File already exists"):
+                        print(data)
+                    elif(data == "create possible"):
+                        print("file created on server")
+                    else:
+                        print("error in create")
                 else:
-                    print("error in create")
+                    print('No support for this file extension')
             # ----------------------------------------------
             elif command[:6] == "delete":
                 s.sendall(command.encode())
@@ -174,13 +205,19 @@ def main():
                 data = s.recv(1024).decode()
                 if(data == "sending file"):
                     recieve_file(s, command[6:])
-                    print("enter message to write")
-                    msg = input()
-                    write_to_file(command[6:], msg)
+
+                    proc = subprocess.Popen(['leafpad', root + command[6:]])
+                    proc.wait()
+
+                    # print("enter message to write")
+                    # msg = input()
+                    # write_to_file(command[6:], msg)
+
                     send_file(s, command[6:])
                 elif(data[:10] == "connect to"):
+                    print("connecting to a different server")
+                    print("please enter the command again")
                     host = data[11:]
-                    port = 9998
                     s.close()
                     break
                 else:
@@ -191,13 +228,19 @@ def main():
                 data = s.recv(1024).decode()
                 if(data == "sending file"):
                     recieve_file(s, command[7:])
-                    print("enter message to write")
-                    msg = input()
-                    append_to_file(command[7:], msg)
+
+                    proc = subprocess.Popen(['leafpad', root + command[7:]])
+                    proc.wait()
+
+                    # print("enter message to write")
+                    # msg = input()
+                    # append_to_file(command[7:], msg)
+
                     send_file(s, command[7:])
                 elif(data[:10] == "connect to"):
+                    print("connecting to a different server")
+                    print("please enter the command again")
                     host = data[11:]
-                    port = 9998
                     s.close()
                     break
                 else:
