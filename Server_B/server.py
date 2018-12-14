@@ -10,10 +10,10 @@ import struct
 # set directory for file server
 root = "Root/"
 # set port for server
-port = 5555
+port = 5556
 # set port for server client socket
-c_port = 9999
-servers_to_connect = [['127.0.0.1', 5555], ['127.0.0.1', 5555]]
+c_port = 9998
+servers_to_connect = [['127.0.0.1', 5555], ['127.0.0.1', 5557]]
 
 # locking mechanism
 lock = threading.Lock()
@@ -278,6 +278,7 @@ def recieve_from_server(socket):
 
 def replicate_create(file_name):
     server_to_replicate = servers_connected[random.randint(0, 1)][2]
+    # server_to_replicate = servers_connected[1][2]
     server_to_replicate.sendall(("replicate_create " + file_name).encode())
 
 
@@ -302,6 +303,8 @@ def replicate_delete(file_name):
         if item[0] == file_name:
             file_here = True
             if item[1] != 'self':
+                # index_delete = temp_list.index(item)
+                # global_file_list.remove(index_delete)
                 item[1].sendall(("replicate_delete "+file_name).encode())
     if(not file_here):
         print("file not found on other servers")
@@ -388,6 +391,7 @@ def recieve_from_client(socket):
                     global_file_list.append([command[7:], 'self'])
                     for servers in servers_connected:
                         servers[2].sendall(('gfl add '+command[7:]).encode())
+                    time.sleep(1)
                     replicate_create(command[7:])
                     print("file sent for replication")
                 else:
@@ -473,7 +477,7 @@ def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # get local machine name
-    host = socket.gethostbyname()
+    host = "127.0.0.1"
     # bind to the port
     server_socket.bind((host, port))
     print("server ip " + str(host))
@@ -548,6 +552,7 @@ def main():
     thread_listen_client.start()
 
     while True:
+
         command = input()
         # --------------------------------------------
         if(command == 'close' or command == 'exit'):
