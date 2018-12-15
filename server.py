@@ -13,7 +13,10 @@ root = "Root/"
 port = 5555
 # set port for server client socket
 c_port = 9999
-servers_to_connect = [['127.0.0.1', 5556], ['127.0.0.1', 5557]]
+# my ip
+my_host = "192.168.43.247"
+# my_host = str(socket.gethostbyname(socket.gethostname()))
+servers_to_connect = [['192.168.43.189', 5555], ['192.168.43.41', 5555]]
 
 # locking mechanism
 lock = threading.Lock()
@@ -225,11 +228,19 @@ def listen_client(clientsocket):
 def recieve_from_server(socket):
     global global_file_list
     while True:
-        msg = socket.recv(1024).decode()
-        if not msg:
-            socket.close()
         # ----------------------------------------------
-        elif len(msg) < 1:
+        try:
+            msg = socket.recv(1024).decode()
+        except ConnectionResetError:
+            msg = ""
+        # ----------------------------------------------
+        if len(msg) < 1:
+            for item in global_file_list:
+                if item[1] == socket:
+                    global_file_list.remove(item)
+            for servers in servers_connected:
+                if servers[2] == socket:
+                    servers_connected.remove(servers)
             socket.close()
         # --------------------------------------------
         elif msg[:4] == "send":
@@ -313,8 +324,14 @@ def replicate_delete(file_name):
 def recieve_from_client(socket):
     global global_file_list
     while True:
-        command = socket.recv(1024).decode()
+        try:
+            command = socket.recv(1024).decode()
+        except ConnectionResetError:
+            command = ""
         if len(command) < 1:
+            for clients in clients_connected:
+                if clients[2] == socket:
+                    clients_connected.remove(clients)
             socket.close()
         # ---------------------------------------------------
         elif command == "exit":
@@ -477,10 +494,10 @@ def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # get local machine name
-    host = "127.0.0.1"
+    host = my_host
     # bind to the port
     server_socket.bind((host, port))
-    print("server ip " + str(host))
+    print("server ip " + host)
     print("bind socket port: %s" % (port))
 
     try:
@@ -562,7 +579,7 @@ def main():
             print(global_file_list)
         # ------------------------------------------
         elif(command == 'listl'):
-            print(local_file_list)
+            print(list_local_file_list("Root"))
         # -----------------------------------------
         else:
             print("invalid command")
