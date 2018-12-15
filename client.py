@@ -125,6 +125,7 @@ def main():
 
         while True:
             print("Write a command to execute or type help")
+            print(">>> ", end='', flush=True)
             command = input()
             if len(command) < 1:
                 print("Please write a command or type help")
