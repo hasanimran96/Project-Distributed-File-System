@@ -2,7 +2,7 @@
 
 ## How to compile and install
 
-### To run the project, do the following:
+### To run the project:
 
     1. create a folder where you want to store the files of the server.
     2. Open **server.py** and update the directory of **root** to where the folder is
